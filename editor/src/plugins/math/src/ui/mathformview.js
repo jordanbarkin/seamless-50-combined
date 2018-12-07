@@ -173,8 +173,8 @@ export default class MathFormView extends View {
 
 		const labeledInput = new LabeledInputView( this.locale, InputTextView );
 
-		labeledInput.label = t( 'Symbol Name' );
-		labeledInput.inputView.placeholder = 'https://math.com';
+		labeledInput.label = t( 'Raw Data' );
+		labeledInput.inputView.placeholder = 'Raw Equation';
 
 		return labeledInput;
 	}

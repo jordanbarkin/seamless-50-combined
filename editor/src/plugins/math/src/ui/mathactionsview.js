@@ -1,6 +1,6 @@
 /**
+ * Adapted from the linkActionsView CKEditor class:
  * @license Copyright (c) 2003-2018, CKSource - Frederico Knabben. All rights reserved.
- * For licensing, see LICENSE.md.
  */
 
 /**
@@ -9,22 +9,17 @@
 
 import View from '@ckeditor/ckeditor5-ui/src/view';
 import ViewCollection from '@ckeditor/ckeditor5-ui/src/viewcollection';
-
 import ButtonView from '@ckeditor/ckeditor5-ui/src/button/buttonview';
-
 import FocusTracker from '@ckeditor/ckeditor5-utils/src/focustracker';
 import FocusCycler from '@ckeditor/ckeditor5-ui/src/focuscycler';
 import KeystrokeHandler from '@ckeditor/ckeditor5-utils/src/keystrokehandler';
-
-import { ensureSafeUrl } from '../utils';
-
-import unmathIcon from '../../theme/icons/unmath.svg';
 import pencilIcon from '@ckeditor/ckeditor5-core/theme/icons/pencil.svg';
+
 import '../../theme/mathactions.css';
 
 /**
  * The math actions view class. This view displays math preview, allows
- * unmathing or editing the math.
+ * editing the math.
  *
  * @extends module:ui/view~View
  */
@@ -32,55 +27,18 @@ export default class MathActionsView extends View {
 	/**
 	 * @inheritDoc
 	 */
-	constructor( locale ) {
+	constructor( locale, editor ) {
 		super( locale );
-
 		const t = locale.t;
-
-		/**
-		 * Tracks information about DOM focus in the actions.
-		 *
-		 * @readonly
-		 * @member {module:utils/focustracker~FocusTracker}
-		 */
+		this.editor = editor;
+		// Initializes view handler and creates a button to initialize editing
 		this.focusTracker = new FocusTracker();
-
-		/**
-		 * An instance of the {@math module:utils/keystrokehandler~KeystrokeHandler}.
-		 *
-		 * @readonly
-		 * @member {module:utils/keystrokehandler~KeystrokeHandler}
-		 */
 		this.keystrokes = new KeystrokeHandler();
 
-		/**
-		 * The raw preview view.
-		 *
-		 * @member {module:ui/view~View}
-		 */
+		// creates a button to handle editing.
+		this.editButtonView = this._createButton( t('Edit math'), pencilIcon, 'edit' );
+
 		this.previewButtonView = this._createPreviewButton();
-
-		/**
-		 * The unmath button view.
-		 *
-		 * @member {module:ui/button/buttonview~ButtonView}
-		 */
-		this.unmathButtonView = this._createButton( t( 'Unmath' ), unmathIcon, 'unmath' );
-
-		/**
-		 * The edit math button view.
-		 *
-		 * @member {module:ui/button/buttonview~ButtonView}
-		 */
-		this.editButtonView = this._createButton( t( 'Edit math' ), pencilIcon, 'edit' );
-
-		/**
-		 * Value of the "raw" attribute of the math to use in the {@math #previewButtonView}.
-		 *
-		 * @observable
-		 * @member {String}
-		 */
-		this.set( 'raw' );
 
 		/**
 		 * A collection of views which can be focused in the view.
@@ -126,8 +84,7 @@ export default class MathActionsView extends View {
 
 			children: [
 				this.previewButtonView,
-				this.editButtonView,
-				this.unmathButtonView
+				this.editButtonView
 			]
 		} );
 	}
@@ -140,8 +97,7 @@ export default class MathActionsView extends View {
 
 		const childViews = [
 			this.previewButtonView,
-			this.editButtonView,
-			this.unmathButtonView
+			this.editButtonView
 		];
 
 		childViews.forEach( v => {
@@ -186,54 +142,33 @@ export default class MathActionsView extends View {
 		return button;
 	}
 
-	/**
-	 * Creates a math raw preview button.
-	 *
-	 * @private
-	 * @returns {module:ui/button/buttonview~ButtonView} The button view instance.
-	 */
+
 	_createPreviewButton() {
 		const button = new ButtonView( this.locale );
 		const bind = this.bindTemplate;
 		const t = this.t;
+		const command = this.editor.commands.get( 'insertMath' );
+		const editor = this.editor;
 
 		button.set( {
 			withText: true,
-			tooltip: t( 'Open math in new tab' )
 		} );
 
 		button.extendTemplate( {
 			attributes: {
 				class: [
 					'ck',
-					'ck-math-actions__preview'
+					'ck-link-actions__preview'
 				],
-				raw: bind.to( 'raw', raw => raw && ensureSafeUrl( raw ) ),
+				// href: bind.to( 'href', href => href && ensureSafeUrl( href ) ),
 				target: '_blank'
 			}
 		} );
 
-		button.bind( 'label' ).to( this, 'raw', raw => {
-			return raw || t( 'This math has no URL' );
-		} );
-
-		button.bind( 'isEnabled' ).to( this, 'raw', raw => !!raw );
-
-		button.template.tag = 'a';
+		button.bind( 'label' ).to( command, 'string' );
+		button.template.tag = 'div';
 		button.template.eventListeners = {};
 
 		return button;
 	}
 }
-
-/**
- * Fired when the {@math #editButtonView} is clicked.
- *
- * @event edit
- */
-
-/**
- * Fired when the {@math #unmathButtonView} is clicked.
- *
- * @event unmath
- */

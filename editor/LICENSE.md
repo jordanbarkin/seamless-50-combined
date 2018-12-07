@@ -1,5 +1,7 @@
 Software License Agreement
 ==========================
+**The Seamless-50 Math Plugin for CKEditor 5**
+Created by Jordan Barkin
 
 **CKEditor 5 document editor build** – https://github.com/ckeditor/ckeditor5-build-decoupled-document <br>
 Copyright (c) 2003-2018, [CKSource](http://cksource.com) Frederico Knabben. All rights reserved.
@@ -8,8 +10,7 @@ Licensed under the terms of [GNU General Public License Version 2 or later](http
 
 Sources of Intellectual Property Included in CKEditor
 -----------------------------------------------------
-
-Where not otherwise indicated, all CKEditor content is authored by CKSource engineers and consists of CKSource-owned intellectual property. In some specific instances, CKEditor will incorporate work done by developers outside of CKSource with their express permission.
+The contents of the src/plugins/math were added by Jordan Barkin, while all CKEditor content is authored by CKSource engineers and consists of CKSource-owned intellectual property. In some specific instances, CKEditor will incorporate work done by developers outside of CKSource with their express permission.
 
 The following libraries are included in CKEditor under the [MIT license](https://opensource.org/licenses/MIT):
 

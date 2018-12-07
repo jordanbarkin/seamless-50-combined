@@ -1,36 +1,26 @@
-/**
- * @license Copyright (c) 2003-2018, CKSource - Frederico Knabben. All rights reserved.
- * For licensing, see LICENSE.md.
- */
-
-/**
- * @module math/mathui
- */
-
 import Plugin from '@ckeditor/ckeditor5-core/src/plugin';
 import ClickObserver from '@ckeditor/ckeditor5-engine/src/view/observer/clickobserver';
 import Range from '@ckeditor/ckeditor5-engine/src/view/range';
-import { isMathElement } from './utils';
 import ContextualBalloon from '@ckeditor/ckeditor5-ui/src/panel/balloon/contextualballoon';
-
 import clickOutsideHandler from '@ckeditor/ckeditor5-ui/src/bindings/clickoutsidehandler';
-
 import ButtonView from '@ckeditor/ckeditor5-ui/src/button/buttonview';
 import MathFormView from './ui/mathformview';
 import MathActionsView from './ui/mathactionsview';
 
+// import { isMathElement } from './utils';
 import mathIcon from '../theme/icons/math.svg';
 
 const mathKeystroke = 'Ctrl+K';
 
 /**
- * The math UI plugin. It introduces the `'math'` and `'unmath'` buttons and support for the <kbd>Ctrl+K</kbd> keystroke.
+ * The master MathUI file. It adds the toolbar button, the UI tooltip, and support for the Ctrl+K keyboard shortcut.
+ * The format of this plugin is adapted from CKEditor's sample plugin tutorial.
  *
  * It uses the
  * {@math module:ui/panel/balloon/contextualballoon~ContextualBalloon contextual balloon plugin}.
  *
- * @extends module:core/plugin~Plugin
  */
+
 export default class MathUI extends Plugin {
 	/**
 	 * @inheritDoc
@@ -69,10 +59,8 @@ export default class MathUI extends Plugin {
 		 */
 		this._balloon = editor.plugins.get( ContextualBalloon );
 
-		// Create toolbar buttons.
+		// Create toolbar buttons and enable the UI.
 		this._createToolbarMathButton();
-
-		// Attach lifecycle actions to the the balloon.
 		this._enableUserBalloonInteractions();
 	}
 
@@ -83,33 +71,27 @@ export default class MathUI extends Plugin {
 	 * @returns {module:math/ui/mathactionsview~MathActionsView} The math actions view instance.
 	 */
 	_createActionsView() {
+
 		const editor = this.editor;
-		const actionsView = new MathActionsView( editor.locale );
-		const mathCommand = editor.commands.get( 'math' );
-		const unmathCommand = editor.commands.get( 'unmath' );
+		const actionsView = new MathActionsView( editor.locale, this.editor );
+		const mathCommand = editor.commands.get( 'insertMath' );
 
-		actionsView.bind( 'href' ).to( mathCommand, 'value' );
-		actionsView.editButtonView.bind( 'isEnabled' ).to( mathCommand );
-		actionsView.unmathButtonView.bind( 'isEnabled' ).to( unmathCommand );
-
-		// Execute unmath command after clicking on the "Edit" button.
+		// Hide the panel after clicking the "Cancel" button.
 		this.listenTo( actionsView, 'edit', () => {
-			this._addFormView();
+			// cancel();
+
+			if ( mathCommand.isEnabled ) {
+				this._showUI();
+			}
 		} );
 
-		// Execute unmath command after clicking on the "Unmath" button.
-		this.listenTo( actionsView, 'unmath', () => {
-			editor.execute( 'unmath' );
-			this._hideUI();
-		} );
-
-		// Close the panel on esc key press when the **actions have focus**.
+		// Close the panel on esc key press
 		actionsView.keystrokes.set( 'Esc', ( data, cancel ) => {
 			this._hideUI();
 			cancel();
 		} );
 
-		// Open the form view on Ctrl+K when the **actions have focus**..
+		// Open the form view on Ctrl+K
 		actionsView.keystrokes.set( mathKeystroke, ( data, cancel ) => {
 			this._addFormView();
 			cancel();
@@ -127,7 +109,7 @@ export default class MathUI extends Plugin {
 	_createFormView() {
 		const editor = this.editor;
 		const formView = new MathFormView( editor.locale );
-		const mathCommand = editor.commands.get( 'math' );
+		const mathCommand = editor.commands.get( 'insertMath' );
 
 		formView.urlInputView.bind( 'value' ).to( mathCommand, 'value' );
 
@@ -137,8 +119,9 @@ export default class MathUI extends Plugin {
 
 		// Execute math command after clicking the "Save" button.
 		this.listenTo( formView, 'submit', () => {
-			editor.execute( 'math', formView.urlInputView.inputView.element.value );
+			editor.execute( 'insertMath', formView.urlInputView.inputView.element.value );
 			this._removeFormView();
+			this._hideUI();
 		} );
 
 		// Hide the panel after clicking the "Cancel" button.
@@ -155,6 +138,14 @@ export default class MathUI extends Plugin {
 		return formView;
 	}
 
+	// ******************************************************************************************************
+	// ******************************************************************************************************
+	// ******************************************************************************************************
+	// ********** Below this point, HEAVILY copied from CKEditor LinkUI plugin with modifications ***********
+	// ******************************************************************************************************
+	// ******************************************************************************************************
+	// ******************************************************************************************************
+
 	/**
 	 * Creates a toolbar Math button. Clicking this button will show
 	 * a {@math #_balloon} attached to the selection.
@@ -163,7 +154,7 @@ export default class MathUI extends Plugin {
 	 */
 	_createToolbarMathButton() {
 		const editor = this.editor;
-		const mathCommand = editor.commands.get( 'math' );
+		const mathCommand = editor.commands.get('insertMath');
 		const t = editor.t;
 
 		// Handle the `Ctrl+K` keystroke and show the panel.
@@ -176,7 +167,7 @@ export default class MathUI extends Plugin {
 			}
 		} );
 
-		editor.ui.componentFactory.add( 'math', locale => {
+		editor.ui.componentFactory.add( 'insertMath', locale => {
 			const button = new ButtonView( locale );
 
 			button.isEnabled = true;
@@ -194,6 +185,8 @@ export default class MathUI extends Plugin {
 			return button;
 		} );
 	}
+
+
 
 	/**
 	 * Attaches actions that control whether the balloon panel containing the
@@ -266,28 +259,26 @@ export default class MathUI extends Plugin {
 	 *
 	 * @protected
 	 */
-	_addFormView() {
+	_addFormView(editing) {
 		if ( this._isFormInPanel ) {
 			return;
 		}
 
 		const editor = this.editor;
-		const mathCommand = editor.commands.get( 'math' );
+		const mathCommand = editor.commands.get( 'insertMath' ); ;
 
 		this._balloon.add( {
 			view: this.formView,
 			position: this._getBalloonPositionData()
 		} );
 
+		if(editor.focusedMathElement == null) {
+			this.formView.urlInputView.inputView.element.value = '';
+		}
+		else {
+			this.formView.urlInputView.inputView.element.value = editor.focusedMathElement.getRawData();
+		}
 		this.formView.urlInputView.select();
-
-		// Make sure that each time the panel shows up, the URL field remains in sync with the value of
-		// the command. If the user typed in the input, then canceled the balloon (`urlInputView#value` stays
-		// unaltered) and re-opened it without changing the value of the math command (e.g. because they
-		// clicked the same math), they would see the old value instead of the actual value of the command.
-		// https://github.com/ckeditor/ckeditor5-math/issues/78
-		// https://github.com/ckeditor/ckeditor5-math/issues/123
-		this.formView.urlInputView.inputView.element.value = mathCommand.value || '';
 	}
 
 	/**
@@ -313,28 +304,14 @@ export default class MathUI extends Plugin {
 	 */
 	_showUI() {
 		const editor = this.editor;
-		const mathCommand = editor.commands.get( 'math' );
-
+		const mathCommand = editor.commands.get( 'insertMath' );
+		// editor.update
 		if ( !mathCommand.isEnabled ) {
 			return;
 		}
 
-		// When there's no math under the selection, go straight to the editing UI.
-		if ( !this._getSelectedMathElement() ) {
-			this._addActionsView();
-			this._addFormView();
-		}
-		// If theres a math under the selection...
-		else {
-			// Go to the editing UI if actions are already visible.
-			if ( this._areActionsVisible ) {
-				this._addFormView();
-			}
-			// Otherwise display just the actions UI.
-			else {
-				this._addActionsView();
-			}
-		}
+		this._addActionsView();
+		this._addFormView();
 
 		// Begin responding to ui#update once the UI is added.
 		this._startUpdatingUI();
@@ -533,7 +510,8 @@ export default class MathUI extends Plugin {
 			// Check if the math element is fully selected.
 			if ( Range.createIn( startMath ).getTrimmed().isEqual( range ) ) {
 				return startMath;
-			} else {
+			}
+			else {
 				return null;
 			}
 		}
@@ -546,5 +524,5 @@ export default class MathUI extends Plugin {
 // @param {module:engine/view/position~Position} View position to analyze.
 // @returns {module:engine/view/attributeelement~AttributeElement|null} Math element at the position or null.
 function findMathElementAncestor( position ) {
-	return position.getAncestors().find( ancestor => isMathElement( ancestor ) );
+	return position.getAncestors().find( ancestor => (ancestor.dataNode != null) );
 }

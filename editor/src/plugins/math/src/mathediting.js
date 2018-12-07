@@ -1,167 +1,145 @@
-/**
- * @license Copyright (c) 2003-2018, CKSource - Frederico Knabben. All rights reserved.
- * For licensing, see LICENSE.md.
- */
-
-/**
- * @module math/mathediting
- */
-
+// /**
+//  * @module math/mathediting
+//  */
 import Plugin from '@ckeditor/ckeditor5-core/src/plugin';
-import {
-	downcastAttributeToElement
-} from '@ckeditor/ckeditor5-engine/src/conversion/downcast-converters';
-import { upcastElementToAttribute } from '@ckeditor/ckeditor5-engine/src/conversion/upcast-converters';
-import MathCommand from './mathcommand';
-import UnmathCommand from './unmathcommand';
-import { createMathElement, ensureSafeUrl } from './utils';
-import bindTwoStepCaretToAttribute from '@ckeditor/ckeditor5-engine/src/utils/bindtwostepcarettoattribute';
-import findMathRange from './findmathrange';
-import '../theme/math.css';
+import Widget from '@ckeditor/ckeditor5-widget/src/widget';
+import ClickObserver from '@ckeditor/ckeditor5-engine/src/view/observer/clickobserver'
+
+import { toWidget } from '@ckeditor/ckeditor5-widget/src/utils';
+import { downcastElementToElement } from '@ckeditor/ckeditor5-engine/src/conversion/downcast-converters';
+import { upcastElementToElement } from '@ckeditor/ckeditor5-engine/src/conversion/upcast-converters';
+
+import MathNode from './mathnode';
+import InsertMathCommand from './mathcommand';
 
 const HIGHLIGHT_CLASS = 'ck-math_selected';
 
-/**
- * The math engine feature.
- *
- * It introduces the `mathHref="url"` attribute in the model which renders to the view as a `<a href="url">` element
- * as well as `'math'` and `'unmath'` commands.
- *
- * @extends module:core/plugin~Plugin
- */
 export default class MathEditing extends Plugin {
-	/**
-	 * @inheritDoc
-	 */
+
+	// Initializes the math engine.
 	init() {
 		const editor = this.editor;
+		const model = editor.model;
+		const editingView = editor.editing.view;
+		const viewDocument = editingView.document;
 
-		// Allow math attribute on all inline nodes.
-		editor.model.schema.extend( '$text', { allowAttributes: 'mathHref' } );
+		// Defines the schema for a math object in the DOM.
+		// Allows elements with <math> tag to exist in model and view.
+		editor.model.schema.register( 'math', {
+			allowWhere: '$text',
+			isObject: true,
+			allowAttributes: 'raw'
+		} );
 
-		editor.conversion.for( 'dataDowncast' )
-			.add( downcastAttributeToElement( { model: 'mathHref', view: createMathElement } ) );
+		// Allows text inside of math elements.
+		editor.model.schema.extend( '$text', {
+			allowIn: 'math'
+		} );
 
-		editor.conversion.for( 'editingDowncast' )
-			.add( downcastAttributeToElement( { model: 'mathHref', view: ( href, writer ) => {
-				return createMathElement( ensureSafeUrl( href ), writer );
-			} } ) );
-
-		editor.conversion.for( 'upcast' )
-			.add( upcastElementToAttribute( {
-				view: {
-					name: 'math',
-					attributes: {
-						href: true
-					}
-				},
-				model: {
-					key: 'mathHref',
-					value: viewElement => viewElement.getAttribute( 'href' )
+		// Defines the conversion from math elements in the model to the view (DOM) when editing in the document.
+		editor.conversion.for( 'editingDowncast' ).add(
+			downcastElementToElement( {
+				model: 'math',
+				view: ( modelItem, viewWriter ) => {
+					const widgetElement = viewWriter.createContainerElement( 'math' );
+					return toWidget( widgetElement, viewWriter );
 				}
-			} ) );
+		} ));
 
-		// window.editor = editor;
+		// Defines the conversion from math elements in the model to the view (DOM) for data added to the editor
+		// via paste or load.
+		editor.conversion.for( 'dataDowncast' ).add(
+			downcastElementToElement( {
+				model: 'math',
+				view: 'math'
+		} ));
 
-        // const model = editor.model;
+		// Defines the conversion from math elements in the view (DOM) to the model for data added to the editor
+		editor.conversion.for( 'upcast' ).add(
+				upcastElementToElement( {
+					view: 'math',
+					model: 'math'
+		} ));
 
-        // model.schema.register( 'mathHref', {
-        //     inheritAllFrom: '$block',
-        //     isObject: true
-        // } );
+		// Initializes the insertMath command triggerable by the toolbar or the 'Control+K' keyboard shortcut.
+		editor.commands.add( 'insertMath', new InsertMathCommand( editor ) );
 
-        // editor.conversion.for( 'dataDowncast' )
-        //     .add( downcastElementToElement( {
-        //         model: 'mathHref',
-        //         view: ( modelItem, writer ) => {
-        //             return writer.createContainerElement( 'div', { class: 'widget' } );
-        //         }
-        //     } ) );
+		// List of all of the mathElements in the tree (for linear traversal for dependency searching by name).
+		editor.mathElements = [];
 
-        // editor.conversion.for( 'editingDowncast' )
-        //     .add( downcastElementToElement( {
-        //         model: 'mathHref',
-        //         view: ( modelItem, writer ) => {
-        //             const div = writer.createContainerElement( 'div', { class: 'widget' } );
+		// Stores the currently selected math element, if any.
+		editor.focusedMathElement = null;
 
-        //             return toWidget( div, writer, { label: 'widget label' } );
-        //         }
-        //     } ) );
-
-        // editor.conversion.for( 'upcast' )
-        //     .add( upcastElementToElement( {
-        //         view: {
-        //             name: 'div',
-        //             class: 'widget'
-        //         },
-        //         model: 'mathHref'
-        //     } ) );
-
-		// Create mathing commands.
-		editor.commands.add( 'math', new MathCommand( editor ) );
-		editor.commands.add( 'unmath', new UnmathCommand( editor ) );
-
-		// Enable two-step caret movement for `mathHref` attribute.
-		bindTwoStepCaretToAttribute( editor.editing.view, editor.model, this, 'mathHref' );
-
-		// Setup highlight over selected math.
-		this._setupMathHighlight();
-	}
-
-	/**
-	 * Adds a visual highlight style to a math in which the selection is anchored.
-	 * Together with two-step caret movement, they indicate that the user is typing inside the math.
-	 *
-	 * Highlight is turned on by adding `.ck-math_selected` class to the math in the view:
-	 *
-	 * * the class is removed before conversion has started, as callbacks added with `'highest'` priority
-	 * to {@math module:engine/conversion/downcastdispatcher~DowncastDispatcher} events,
-	 * * the class is added in the view post fixer, after other changes in the model tree were converted to the view.
-	 *
-	 * This way, adding and removing highlight does not interfere with conversion.
-	 *
-	 * @private
-	 */
-	_setupMathHighlight() {
-		const editor = this.editor;
-		const view = editor.editing.view;
-		const highlightedMaths = new Set();
-
-		// Adding the class.
-		view.document.registerPostFixer( writer => {
-			const selection = editor.model.document.selection;
-
-			if ( selection.hasAttribute( 'mathHref' ) ) {
-				const modelRange = findMathRange( selection.getFirstPosition(), selection.getAttribute( 'mathHref' ) );
-				const viewRange = editor.editing.mapper.toViewRange( modelRange );
-
-				// There might be multiple `a` elements in the `viewRange`, for example, when the `a` element is
-				// broken by a UIElement.
-				for ( const item of viewRange.getItems() ) {
-					if ( item.is( 'math' ) ) {
-						writer.addClass( HIGHLIGHT_CLASS, item );
-						highlightedMaths.add( item );
+		// Updates the value in the editor.focusedMathElement field.
+		editor.updateFocusedMathElement = function() {
+			editor.focusedMathElement = null;
+			let ranges = model.document.selection.getRanges();
+			let mathFound = false;
+			let mathNode = null;
+			// Iterates over every item in the selected area, searching for a
+			// math node.
+			for(var range of ranges){
+				for(var item of range) {
+					item = item["item"];
+					if(item.name === "math") {
+						mathFound = true;
+						mathNode = item.dataNode;
+						editor.focusedMathElement = mathNode;
 					}
 				}
 			}
-		} );
+		}
 
-		// Removing the class.
-		editor.conversion.for( 'editingDowncast' ).add( dispatcher => {
-			// Make sure the highlight is removed on every possible event, before conversion is started.
-			dispatcher.on( 'insert', removeHighlight, { priority: 'highest' } );
-			dispatcher.on( 'remove', removeHighlight, { priority: 'highest' } );
-			dispatcher.on( 'attribute', removeHighlight, { priority: 'highest' } );
-			dispatcher.on( 'selection', removeHighlight, { priority: 'highest' } );
-
-			function removeHighlight() {
-				view.change( writer => {
-					for ( const item of highlightedMaths.values() ) {
-						writer.removeClass( HIGHLIGHT_CLASS, item );
-						highlightedMaths.delete( item );
-					}
+		// Master function to add or edit math in the model.
+		// Writes to the virtual DOM and creates a dataNode, which is added to the
+		// tree.
+		editor.insertMath = function(editor, rawData, name) {
+			if(!editor.focusedMathElement) {
+				editor.model.change( writer => {
+					const math = writer.createElement('math');
+					math.dataNode = new MathNode(math, name, rawData);
+					editor.mathElements.push(math);
+					math.dataNode.setParentElementPointer(math);
+					writer.insertText(String(math.dataNode.getRenderedValue()), math );
+					writer.insert( math, editor.model.document.selection.getFirstPosition());
 				} );
 			}
+			else
+				editor.focusedMathElement.updateRawData(rawData);
+			}
+
+
+
+		// Listens for clicks on nodes.
+		editingView.addObserver(ClickObserver);
+
+		// Clicking a node focuses it, assigning it to editor.focusedMathElement.
+		this.listenTo( viewDocument, 'click', (event,data) => {
+			const target = data.target; // This is the view the user clicked on
+			const modelObj = editor.editing.mapper.toModelElement(target);
+
+			console.log("focusing" + modelObj); //this is the element clicked
+			try {
+				editor.focusedMathElement = modelObj.dataNode;
+			}
+			catch(err) {
+				editor.focusedMathElement = modelObj;
+			}
 		} );
+
+		// Listens for deletions in the DOM and then calls removeFromTree() on
+		// the associated dataNode, completing the process of removing the element.
+		editor.model.on( 'deleteContent', ( evt, data ) => {
+			let ranges = data[0].getRanges();
+			for(var range of ranges){
+				for(var item of range) {
+					item = item["item"];
+					console.log(item);
+					if(item.name === "math") {
+						item.dataNode.removeFromTree();
+					}
+				}
+			}
+		}, { priority: 'highest' } );
 	}
 }

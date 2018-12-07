@@ -3,9 +3,10 @@
  * For licensing, see LICENSE.md.
  */
 
-// The editor creator to use.
+// The editor template to use.
 import DecoupledEditorBase from '@ckeditor/ckeditor5-editor-decoupled/src/decouplededitor';
 
+// Some basic CKeditor plugins to include in the build (so the sample text editor has more features).
 import Essentials from '@ckeditor/ckeditor5-essentials/src/essentials';
 import Alignment from '@ckeditor/ckeditor5-alignment/src/alignment';
 import FontSize from '@ckeditor/ckeditor5-font/src/fontsize';
@@ -32,14 +33,11 @@ import Paragraph from '@ckeditor/ckeditor5-paragraph/src/paragraph';
 import PasteFromOffice from '@ckeditor/ckeditor5-paste-from-office/src/pastefromoffice';
 import Table from '@ckeditor/ckeditor5-table/src/table';
 import TableToolbar from '@ckeditor/ckeditor5-table/src/tabletoolbar';
-import Link from './plugins/link/src/link';
-// import Link from '@ckeditor/ckeditor5-link/src/link';
 
 // ----------- my plugin ----------- 
-// import Math from './plugins/math/src/math'; // production
-import Math from './plugins/test/src/math'; // The test environment.
+import Math from './plugins/math/src/math'; // The test environment.
 
-
+// The root class for the editor. 
 export default class DecoupledEditor extends DecoupledEditorBase {}
 
 // Plugins to include in the build.
@@ -64,7 +62,6 @@ DecoupledEditor.builtinPlugins = [
 	ImageStyle,
 	ImageToolbar,
 	ImageUpload,
-	Link,
 	Math,
 	List,
 	MediaEmbed,
@@ -102,7 +99,8 @@ DecoupledEditor.defaultConfig = {
 			'mediaEmbed',
 			'|',
 			'undo',
-			'redo'
+			'redo',
+			'insertMath'
 		]
 	},
 	image: {
@@ -126,6 +124,5 @@ DecoupledEditor.defaultConfig = {
 			'mergeTableCells'
 		]
 	},
-	// This value must be kept in sync with the language defined in webpack.config.js.
 	language: 'en'
 };

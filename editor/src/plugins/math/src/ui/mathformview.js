@@ -173,8 +173,8 @@ export default class MathFormView extends View {
 
 		const labeledInput = new LabeledInputView( this.locale, InputTextView );
 
-		labeledInput.label = t( 'Raw Data' );
-		labeledInput.inputView.placeholder = 'Raw Equation';
+		labeledInput.label = t( 'Formula' );
+		labeledInput.inputView.placeholder = 'Equation eg. @@x@@+25';
 
 		return labeledInput;
 	}

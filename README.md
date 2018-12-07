@@ -1,45 +1,101 @@
-# electron-quick-start
+# Seamless 50 ([View on Github](https://github.com/jordanbarkin/seamless-50-combined))
 
-**Clone and run for a quick way to see Electron in action.**
+**Rapid mathematical text editing for labs, papers, and anything else.**
 
-This is a minimal Electron application based on the [Quick Start Guide](https://electronjs.org/docs/tutorial/quick-start) within the Electron documentation.
+**Seamless 50** is a rich text editor implemented using the CKEditor framework and wrapped in an ElectronJS application. It adds inline computation to the base CKEditor framework. 
 
-**Use this app along with the [Electron API Demos](https://electronjs.org/#get-started) app for API code examples to help you get started.**
+Numbers in Seamless documents are treated as floating cells, which functions similarly to cells in a spreadsheet program. Values in the document can be expressed as functions of other cells. When the value of any number in the document is changed, the values of any other values that depend on it will be updated. A dependency tree keeps track of which cells depend on which, and a recursive update function propagates changes throughout the document whenever values are changed, keeping everything in sync in real time.
 
-A basic Electron application needs just these files:
+## Launching Seamless 50
 
-- `package.json` - Points to the app's main file and lists its details and dependencies.
-- `main.js` - Starts the app and creates a browser window to render HTML. This is the app's **main process**.
-- `index.html` - A web page to render. This is the app's **renderer process**.
+Since Seamless is built using ElectronJS, it is provided prepackaged into a native MacOS app. Simply launch:
+ `seamless-50-combined/release-builds/Seamless-50-darwin-x64/Seamless-50.app` to open the app.
 
-You can learn more about each of these components within the [Quick Start Guide](https://electronjs.org/docs/tutorial/quick-start).
+The app will open a demo file by default.
 
-## To Use
+## Building Seamless 50
+Building Seamless is a two step process. 
 
-To clone and run this repository you'll need [Git](https://git-scm.com) and [Node.js](https://nodejs.org/en/download/) (which comes with [npm](http://npmjs.com)) installed on your computer. From your command line:
+First, the editor component (extended from @ckeditor/ckeditor5-editor-decoupled) needs to be built. This will install dependencies and update the ckeditor.js package in seamless-50-combined/editor/build/ckeditor.js
 
 ```bash
 # Clone this repository
-git clone https://github.com/electron/electron-quick-start
+git clone https://github.com/jordanbarkin/seamless-50-combined
 # Go into the repository
 cd electron-quick-start
-# Install dependencies
+# Go into the editor folder
+cd editor
+# Install editor dependencies
 npm install
-# Run the app
+# Package editor.
+npm run build
+```
+
+Next, the Electron environment can be initialized.
+```bash
+# Return to the repository root
+cd ..
+# Install editor dependencies
+npm install
+```
+
+The app can be tested without packaging on any platform
+```bash
+# Run app
 npm start
 ```
 
-Note: If you're using Linux Bash for Windows, [see this guide](https://www.howtogeek.com/261575/how-to-run-graphical-linux-desktop-applications-from-windows-10s-bash-shell/) or use `node` from the command prompt.
+Alternatively, the app can be packaged for MacOS, updating the build in `seamless-50-combined/release-builds/Seamless-50-darwin-x64/Seamless-50.app` 
+```bash
+# Package app
+electron-packager . --overwrite --platform=darwin --arch=x64 --prune=true --out=release-builds
+```
 
-## Resources for Learning Electron
+## Using Seamless
 
-- [electronjs.org/docs](https://electronjs.org/docs) - all of Electron's documentation
-- [electronjs.org/community#boilerplates](https://electronjs.org/community#boilerplates) - sample starter apps created by the community
-- [electron/electron-quick-start](https://github.com/electron/electron-quick-start) - a very basic starter Electron app
-- [electron/simple-samples](https://github.com/electron/simple-samples) - small applications with ideas for taking them further
-- [electron/electron-api-demos](https://github.com/electron/electron-api-demos) - an Electron app that teaches you how to use Electron
-- [hokein/electron-sample-apps](https://github.com/hokein/electron-sample-apps) - small demo apps for the various Electron APIs
+Seamless has simple functionality. Aside from its single new additional new feature, it is a standard rich text editor, with support for standard formatting, images, tables, and undo-redo provided by CKEditor plugins. 
 
-## License
+The app will open a demo file by default.
 
-[CC0 1.0 (Public Domain)](LICENSE.md)
+### Math Nodes
+
+**Seamless's unique feature is its inline computation.**
+
+Math nodes can be identified in the document by a yellow border that appears when hovering the cursor over them. Clicking a math node focuses it, changing the border to blue. 
+
+To insert a new node or edit a focused node, click the **Math** icon at the far right edge of the toolbar or press the keyboard command (**⌘+K**).
+This will bring up a UI to either insert a **formula** for a new math node or edit the focused one. Optionally, you can name the formula in the **name** field. Click the checkmark or press **enter** to calculate the value of the new formula and insert it into the document. Press **escape** or click the red X to cancel.
+
+**Defining a formula**
+Formulas in math nodes can contain a few types of elements: 
+
+- **Constants:** The simplest type of formula is a constant. (eg. 12.3). Constants do not depend on any other value and require no calculation to render.
+
+- **Simple expressions:** Formulas can also contain math expressions, expressed in simple math notation as expected. Examples:
+	- 20 + 50.5
+	- (20*(50+25.2)*5)/4
+
+- **References:** Most importantly, formnulas can contain references to other formulas in the document. These are delimited by the **@@** delimiter symbol at both sides.
+
+Example: Consider a document containing the following math nodes (name: formula): 
+ - (x: 20)
+ - (y: 30)
+ - (z: 20 + 20) *evaluates to 40 in the document*
+
+Then, for example, any of the following formula would be valid:
+ - (x + y + z) *evaluates to 90 in the document*
+ - (x*y + y*z*z) *evaluates to 48600 in the document*
+ - (x/(y+z)) *evaluates to 15 in the document*
+
+**Editing an existing node and changing its formula will automatically update the values of any nodes that depend on that node. Changes propagate automatically.**
+
+*Thank you for trying Seamless-50. I look forward to continuing development on the project*
+
+*--Jordan Barkin*
+
+
+
+
+
+
+

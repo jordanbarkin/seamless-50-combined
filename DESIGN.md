@@ -29,7 +29,7 @@ Seamless-50
 │   │           ├── src
 │   │           │   ├── <b>math.js</b> — <i>A "glue" plugin: combines all of the math source into one module</i>
 │   │           │   ├── <b>mathcommand.js</b> — <i>Handles execution of math insertion.</i>
-│   │           │   ├── <b>mathediting.js</b> — <i>The editing engine component.</i>.
+│   │           │   ├── <b>mathediting.js</b> — <i>The editing engine component.</i>
 │   │           │   ├── <b>mathnode.js</b> — <i>The mathNode model class.</i>
 │   │           │   ├── <b>mathui.js</b> — <i>Initializes and maintains the form and action UI</i>
 │   │           │   └── ui
